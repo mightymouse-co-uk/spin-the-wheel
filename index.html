@@ -45,7 +45,7 @@
         details {
             margin-top: 30px;
             text-align: left;
-            max-width: 600px;
+            max-width: 800px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -63,20 +63,31 @@
             padding: 10px;
             font-size: 16px;
         }
-        #optionsList {
-            list-style-type: none;
-            padding: 0;
-            max-width: 400px;
-            margin: 0 auto;
+        #optionsTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #optionsTable th, #optionsTable td {
+            border: 1px solid #ced4da;
+            padding: 8px;
             text-align: left;
         }
-        #optionsList li {
-            margin: 5px 0;
+        #optionsTable th {
+            background-color: #f8f9fa;
         }
-        #optionsList button {
-            margin-left: 5px;
+        #optionsTable input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
         }
-        #add-option-button, #create-wheel-button, #upload-csv-button {
+        #optionsTable input[type="color"] {
+            width: 50px;
+            height: 30px;
+            padding: 0;
+            border: none;
+            background: none;
+        }
+        #add-option-button, #create-wheel-button, #upload-csv-button, #download-csv-button {
             padding: 10px 20px;
             font-size: 16px;
             margin: 10px;
@@ -141,13 +152,29 @@
             <label for="colorInput">Option Color:</label><br>
             <input type="color" id="colorInput"><br><br>
             <button id="add-option-button" onclick="addOption()">Add Option</button>
-            <ul id="optionsList"></ul>
             <button id="create-wheel-button" onclick="createWheel()">Create Wheel</button><br><br>
 
             <!-- CSV Upload Section -->
             <label for="csvFileInput">Upload Options from CSV:</label><br>
             <input type="file" id="csvFileInput" accept=".csv"><br><br>
             <button id="upload-csv-button" onclick="uploadCSV()">Upload CSV</button>
+            <button id="download-csv-button" onclick="downloadCSV()">Download CSV</button>
+
+            <!-- Options Table -->
+            <table id="optionsTable">
+                <thead>
+                    <tr>
+                        <th>Color</th>
+                        <th>Label</th>
+                        <th>Full Text</th>
+                        <th>Count</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="optionsTableBody">
+                    <!-- Options will be dynamically added here -->
+                </tbody>
+            </table>
         </div>
     </details>
 
@@ -296,6 +323,9 @@
             ctx.save();
             ctx.font = 'bold 30px Helvetica, Arial';
             var text = visibleOptions[index].fullText;
+            // Increment count
+            options[lastResultIndex].count = (options[lastResultIndex].count || 0) + 1;
+            updateOptionsTable();
             // Show result in popup with confetti
             showResult(text);
             ctx.restore();
@@ -321,34 +351,80 @@
             if (optionText === "") {
                 optionText = labelText; // Default full text to label
             }
-            options.push({ label: labelText, fullText: optionText, color: colorValue });
+            options.push({ label: labelText, fullText: optionText, color: colorValue, count: 0 });
             labelInput.value = "";
             optionInput.value = "";
             colorInput.value = getRandomColor(); // Random color for next option
-            updateOptionsList();
+            updateOptionsTable();
         }
 
-        function updateOptionsList() {
-            var optionsList = document.getElementById("optionsList");
-            optionsList.innerHTML = "";
+        function updateOptionsTable() {
+            var optionsTableBody = document.getElementById("optionsTableBody");
+            optionsTableBody.innerHTML = "";
             for (var i = 0; i < options.length; i++) {
-                var li = document.createElement("li");
-                li.textContent = options[i].label;
+                var tr = document.createElement("tr");
 
-                var colorBox = document.createElement("span");
-                colorBox.style.display = "inline-block";
-                colorBox.style.width = "20px";
-                colorBox.style.height = "20px";
-                colorBox.style.backgroundColor = options[i].color;
-                colorBox.style.marginRight = "10px";
-                li.prepend(colorBox);
+                // Color Cell
+                var colorTd = document.createElement("td");
+                var colorInput = document.createElement("input");
+                colorInput.type = "color";
+                colorInput.value = options[i].color;
+                colorInput.onchange = (function(index) {
+                    return function(event) {
+                        options[index].color = event.target.value;
+                        drawRouletteWheel();
+                    };
+                })(i);
+                colorTd.appendChild(colorInput);
+                tr.appendChild(colorTd);
 
-                var editButton = document.createElement("button");
-                editButton.textContent = "Edit";
-                editButton.onclick = (function(index) {
+                // Label Cell
+                var labelTd = document.createElement("td");
+                var labelInput = document.createElement("input");
+                labelInput.type = "text";
+                labelInput.value = options[i].label;
+                labelInput.onchange = (function(index) {
+                    return function(event) {
+                        var newValue = event.target.value.trim();
+                        if (newValue === "") {
+                            alert("Label cannot be empty.");
+                            event.target.value = options[index].label;
+                        } else {
+                            options[index].label = newValue;
+                            drawRouletteWheel();
+                        }
+                    };
+                })(i);
+                labelTd.appendChild(labelInput);
+                tr.appendChild(labelTd);
+
+                // Full Text Cell
+                var fullTextTd = document.createElement("td");
+                var fullTextInput = document.createElement("input");
+                fullTextInput.type = "text";
+                fullTextInput.value = options[i].fullText;
+                fullTextInput.onchange = (function(index) {
+                    return function(event) {
+                        options[index].fullText = event.target.value.trim() || options[index].label;
+                    };
+                })(i);
+                fullTextTd.appendChild(fullTextInput);
+                tr.appendChild(fullTextTd);
+
+                // Count Cell
+                var countTd = document.createElement("td");
+                countTd.textContent = options[i].count || 0;
+                tr.appendChild(countTd);
+
+                // Actions Cell
+                var actionsTd = document.createElement("td");
+
+                var hideButton = document.createElement("button");
+                hideButton.textContent = hiddenOptions.has(i) ? "Show" : "Hide";
+                hideButton.onclick = (function(index) {
                     return function() {
-                        editOption(index);
-                    }
+                        toggleOptionVisibility(index);
+                    };
                 })(i);
 
                 var removeButton = document.createElement("button");
@@ -356,51 +432,14 @@
                 removeButton.onclick = (function(index) {
                     return function() {
                         removeOption(index);
-                    }
+                    };
                 })(i);
 
-                var hideButton = document.createElement("button");
-                hideButton.textContent = hiddenOptions.has(i) ? "Show" : "Hide";
-                hideButton.onclick = (function(index) {
-                    return function() {
-                        toggleOptionVisibility(index);
-                    }
-                })(i);
+                actionsTd.appendChild(hideButton);
+                actionsTd.appendChild(removeButton);
+                tr.appendChild(actionsTd);
 
-                li.appendChild(editButton);
-                li.appendChild(removeButton);
-                li.appendChild(hideButton);
-                optionsList.appendChild(li);
-            }
-        }
-
-        function editOption(index) {
-            var newLabel = prompt("Edit option label:", options[index].label);
-            if (newLabel !== null) {
-                newLabel = newLabel.trim();
-                if (newLabel === "") {
-                    alert("Label cannot be empty.");
-                    return;
-                }
-                var newOption = prompt("Edit option full text (leave blank to default to label):", options[index].fullText);
-                if (newOption !== null) {
-                    newOption = newOption.trim();
-                    if (newOption === "") {
-                        newOption = newLabel;
-                    }
-                    var newColor = prompt("Edit option color (in hex format, e.g., #ff0000):", options[index].color);
-                    if (newColor !== null) {
-                        if (/^#([0-9A-F]{3}){1,2}$/i.test(newColor)) {
-                            options[index].label = newLabel;
-                            options[index].fullText = newOption;
-                            options[index].color = newColor;
-                            updateOptionsList();
-                            drawRouletteWheel();
-                        } else {
-                            alert("Invalid color format. Please enter a valid hex color code.");
-                        }
-                    }
-                }
+                optionsTableBody.appendChild(tr);
             }
         }
 
@@ -416,7 +455,8 @@
                 }
             });
             hiddenOptions = newHiddenOptions;
-            updateOptionsList();
+            updateOptionsTable();
+            drawRouletteWheel();
         }
 
         function toggleOptionVisibility(index) {
@@ -425,7 +465,7 @@
             } else {
                 hiddenOptions.add(index);
             }
-            updateOptionsList();
+            updateOptionsTable();
             drawRouletteWheel();
         }
 
@@ -465,7 +505,7 @@
         function hideOption() {
             if (lastResultIndex !== -1) {
                 hiddenOptions.add(lastResultIndex);
-                updateOptionsList();
+                updateOptionsTable();
                 drawRouletteWheel();
             }
             closeResult();
@@ -563,10 +603,11 @@
                 var line = lines[i].trim();
                 if (line === "") continue; // Skip empty lines
                 var values = line.split(',');
-                // Expected columns: label, fullText, color
+                // Expected columns: label, fullText, color, count
                 var label = values[0] ? values[0].trim() : "";
                 var fullText = values[1] ? values[1].trim() : label;
                 var color = values[2] ? values[2].trim() : getRandomColor();
+                var count = values[3] ? parseInt(values[3].trim(), 10) || 0 : 0;
                 if (label === "") {
                     alert("Error on line " + (i + 1) + ": Label is required.");
                     continue;
@@ -575,10 +616,37 @@
                 if (!/^#([0-9A-F]{3}){1,2}$/i.test(color)) {
                     color = getRandomColor(); // Assign random color if invalid
                 }
-                options.push({ label: label, fullText: fullText, color: color });
+                options.push({ label: label, fullText: fullText, color: color, count: count });
             }
-            updateOptionsList();
+            updateOptionsTable();
             alert("Options have been successfully uploaded from the CSV file.");
+        }
+
+        // CSV Download Functionality
+        function downloadCSV() {
+            var csvContent = "Label,Full Text,Color,Count\n";
+            options.forEach(function(option) {
+                var row = [
+                    '"' + option.label.replace(/"/g, '""') + '"',
+                    '"' + option.fullText.replace(/"/g, '""') + '"',
+                    option.color,
+                    option.count || 0
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            // Create a Blob from the CSV content
+            var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+
+            // Create a link to trigger the download
+            var link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "wheel_options.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
     </script>
