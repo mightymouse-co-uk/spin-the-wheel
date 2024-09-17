@@ -21,12 +21,18 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             background: #28a745;
             border-radius: 50%;
             cursor: pointer;
             transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
         }
         #spin-button:hover {
             background-color: #218838;
@@ -34,18 +40,6 @@
         }
         #spin-button:active {
             background-color: #1e7e34;
-        }
-        #spin-button:before {
-            content: '';
-            position: absolute;
-            top: -40px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 40px solid transparent;
-            border-right: 40px solid transparent;
-            border-bottom: 40px solid #28a745;
         }
         #result {
             font-size: 24px;
@@ -97,7 +91,7 @@
     <h1>Spin the Wheel</h1>
     <div id="wheel-container">
         <canvas id="wheelcanvas" width="500" height="500"></canvas>
-        <div id="spin-button" onclick="spinWheel()"></div>
+        <div id="spin-button" onclick="spinWheel()">Spin</div>
     </div>
     <div id="result"></div>
 
@@ -203,6 +197,7 @@
             spinTime = 0;
             spinTimeTotal = Math.random() * 3 + 4 * 1000;
             prevIndex = -1; // Reset previous index
+            document.getElementById("result").innerHTML = ""; // Clear the result
             rotateWheel();
         }
 
@@ -226,7 +221,10 @@
                 // Play sound
                 tickSound.pause();
                 tickSound.currentTime = 0;
-                tickSound.play();
+                tickSound.play().catch(function(error) {
+                    // Auto-play was prevented
+                    console.log('Auto-play prevented:', error);
+                });
                 prevIndex = index;
             }
 
