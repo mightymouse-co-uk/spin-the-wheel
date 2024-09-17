@@ -87,7 +87,7 @@
             border: none;
             background: none;
         }
-        #add-option-button, #create-wheel-button, #upload-csv-button, #download-csv-button {
+        #add-option-button, #create-wheel-button, #upload-csv-button, #download-csv-button, #reset-counts-button, #load-example-button {
             padding: 10px 20px;
             font-size: 16px;
             margin: 10px;
@@ -152,13 +152,15 @@
             <label for="colorInput">Option Color:</label><br>
             <input type="color" id="colorInput"><br><br>
             <button id="add-option-button" onclick="addOption()">Add Option</button>
-            <button id="create-wheel-button" onclick="createWheel()">Create Wheel</button><br><br>
+            <button id="create-wheel-button" onclick="createWheel()">Create Wheel</button>
+            <button id="reset-counts-button" onclick="resetCounts()">Reset Counts</button><br><br>
 
             <!-- CSV Upload Section -->
             <label for="csvFileInput">Upload Options from CSV:</label><br>
             <input type="file" id="csvFileInput" accept=".csv"><br><br>
             <button id="upload-csv-button" onclick="uploadCSV()">Upload CSV</button>
             <button id="download-csv-button" onclick="downloadCSV()">Download CSV</button>
+            <button id="load-example-button" onclick="loadExample()">Load Example</button>
 
             <!-- Options Table -->
             <table id="optionsTable">
@@ -598,14 +600,15 @@
         }
 
         function parseCSV(data) {
+            options = []; // Clear existing options
             var lines = data.split('\n');
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i].trim();
                 if (line === "") continue; // Skip empty lines
                 var values = line.split(',');
                 // Expected columns: label, fullText, color, count
-                var label = values[0] ? values[0].trim() : "";
-                var fullText = values[1] ? values[1].trim() : label;
+                var label = values[0] ? values[0].trim().replace(/^"|"$/g, '').replace(/""/g, '"') : "";
+                var fullText = values[1] ? values[1].trim().replace(/^"|"$/g, '').replace(/""/g, '"') : label;
                 var color = values[2] ? values[2].trim() : getRandomColor();
                 var count = values[3] ? parseInt(values[3].trim(), 10) || 0 : 0;
                 if (label === "") {
@@ -618,7 +621,9 @@
                 }
                 options.push({ label: label, fullText: fullText, color: color, count: count });
             }
+            hiddenOptions.clear();
             updateOptionsTable();
+            drawRouletteWheel();
             alert("Options have been successfully uploaded from the CSV file.");
         }
 
@@ -649,6 +654,26 @@
             document.body.removeChild(link);
         }
 
+        // Reset Counts Functionality
+        function resetCounts() {
+            options.forEach(function(option) {
+                option.count = 0;
+            });
+            updateOptionsTable();
+        }
+
+        // Load Example Options
+        function loadExample() {
+            options = [
+                { label: "Option 1", fullText: "This is the full text for option 1", color: "#FF5733", count: 0 },
+                { label: "Option 2", fullText: "This is the full text for option 2", color: "#33FF57", count: 0 },
+                { label: "Option 3", fullText: "This is the full text for option 3", color: "#3357FF", count: 0 },
+                { label: "Option 4", fullText: "This is the full text for option 4", color: "#FF33A5", count: 0 }
+            ];
+            hiddenOptions.clear();
+            updateOptionsTable();
+            drawRouletteWheel();
+        }
     </script>
 </body>
 </html>
