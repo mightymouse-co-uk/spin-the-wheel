@@ -58,7 +58,7 @@
             border: 1px solid #ced4da;
             border-radius: 5px;
         }
-        #optionInput {
+        #optionInput, #labelInput, #colorInput, #csvFileInput {
             width: 300px;
             padding: 10px;
             font-size: 16px;
@@ -76,10 +76,25 @@
         #optionsList button {
             margin-left: 5px;
         }
-        #add-option-button, #create-wheel-button {
+        #add-option-button, #create-wheel-button, #upload-csv-button {
             padding: 10px 20px;
             font-size: 16px;
             margin: 10px;
+        }
+        /* Tooltip styles */
+        #tooltip {
+            position: absolute;
+            background-color: #fff;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 14px;
+            max-width: 200px;
+            word-wrap: break-word;
+            z-index: 1000;
         }
         /* Confetti styles */
         .confetti {
@@ -109,6 +124,9 @@
         <div id="spin-button" onclick="spinWheel()">Spin</div>
     </div>
 
+    <!-- Tooltip -->
+    <div id="tooltip"></div>
+
     <details>
         <summary>Manage Options</summary>
         <div style="margin-top: 20px;">
@@ -116,10 +134,20 @@
             <input type="text" id="titleInput" placeholder="Enter wheel title"><br><br>
             <button onclick="updateTitle()">Update Title</button><br><br>
 
-            <input type="text" id="optionInput" placeholder="Enter an option">
+            <label for="labelInput">Option Label (short):</label><br>
+            <input type="text" id="labelInput" placeholder="Enter option label"><br><br>
+            <label for="optionInput">Option Full Text (optional):</label><br>
+            <input type="text" id="optionInput" placeholder="Enter full option text"><br><br>
+            <label for="colorInput">Option Color:</label><br>
+            <input type="color" id="colorInput"><br><br>
             <button id="add-option-button" onclick="addOption()">Add Option</button>
             <ul id="optionsList"></ul>
-            <button id="create-wheel-button" onclick="createWheel()">Create Wheel</button>
+            <button id="create-wheel-button" onclick="createWheel()">Create Wheel</button><br><br>
+
+            <!-- CSV Upload Section -->
+            <label for="csvFileInput">Upload Options from CSV:</label><br>
+            <input type="file" id="csvFileInput" accept=".csv"><br><br>
+            <button id="upload-csv-button" onclick="uploadCSV()">Upload CSV</button>
         </div>
     </details>
 
@@ -150,28 +178,6 @@
         let lastResultIndex = -1; // To keep track of the last result index
         const tickSound = document.getElementById('tick-sound');
 
-        function byte2Hex(n) {
-            var nybHexString = "0123456789ABCDEF";
-            return String(nybHexString.substr((n >> 4) & 0x0F,1)) + nybHexString.substr(n & 0x0F,1);
-        }
-
-        function RGB2Color(r,g,b) {
-            return '#' + byte2Hex(r) + byte2Hex(g) + byte2Hex(b);
-        }
-
-        function getColor(item, maxitem) {
-            var phase = 0;
-            var center = 128;
-            var width = 127;
-            var frequency = Math.PI*2/maxitem;
-
-            let red   = Math.sin(frequency*item+2+phase) * width + center;
-            let green = Math.sin(frequency*item+0+phase) * width + center;
-            let blue  = Math.sin(frequency*item+4+phase) * width + center;
-
-            return RGB2Color(red,green,blue);
-        }
-
         function drawRouletteWheel() {
             var canvas = document.getElementById("wheelcanvas");
             if (canvas.getContext) {
@@ -185,13 +191,12 @@
                 ctx.strokeStyle = "black";
                 ctx.lineWidth = 2;
 
-                ctx.font = 'bold 14px Helvetica, Arial';
-
                 let visibleOptions = options.filter((option, index) => !hiddenOptions.has(index));
                 if (visibleOptions.length === 0) {
                     // No visible options to draw
                     ctx.fillStyle = "gray";
-                    ctx.fillText("No options to display", 250, 250);
+                    ctx.font = 'bold 20px Helvetica, Arial';
+                    ctx.fillText("No options to display", 250 - ctx.measureText("No options to display").width / 2, 250);
                     return;
                 }
                 arc = Math.PI / (visibleOptions.length / 2);
@@ -199,7 +204,7 @@
                 for(let i = 0; i < visibleOptions.length; i++) {
                     var angle = startAngle + i * arc;
                     // Draw segment
-                    ctx.fillStyle = getColor(i, visibleOptions.length);
+                    ctx.fillStyle = visibleOptions[i].color || getColor(i, visibleOptions.length);
 
                     ctx.beginPath();
                     ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
@@ -213,7 +218,15 @@
                     ctx.translate(250 + Math.cos(angle + arc / 2) * textRadius,
                                   250 + Math.sin(angle + arc / 2) * textRadius);
                     ctx.rotate(angle + arc / 2 + Math.PI / 2);
-                    var text = visibleOptions[i];
+                    var text = visibleOptions[i].label;
+                    // Adjust font size
+                    let fontSize = 16;
+                    if (text.length > 20) {
+                        fontSize = 14;
+                    }
+                    ctx.font = `bold ${fontSize}px Helvetica, Arial`;
+
+                    // Draw text
                     ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
                     ctx.restore();
                 }
@@ -282,7 +295,7 @@
 
             ctx.save();
             ctx.font = 'bold 30px Helvetica, Arial';
-            var text = visibleOptions[index];
+            var text = visibleOptions[index].fullText;
             // Show result in popup with confetti
             showResult(text);
             ctx.restore();
@@ -295,14 +308,23 @@
         }
 
         function addOption() {
+            var labelInput = document.getElementById("labelInput");
             var optionInput = document.getElementById("optionInput");
+            var colorInput = document.getElementById("colorInput");
+            var labelText = labelInput.value.trim();
             var optionText = optionInput.value.trim();
-            if (optionText === "") {
-                alert("Please enter a valid option.");
+            var colorValue = colorInput.value;
+            if (labelText === "") {
+                alert("Please enter a label for the option.");
                 return;
             }
-            options.push(optionText);
+            if (optionText === "") {
+                optionText = labelText; // Default full text to label
+            }
+            options.push({ label: labelText, fullText: optionText, color: colorValue });
+            labelInput.value = "";
             optionInput.value = "";
+            colorInput.value = getRandomColor(); // Random color for next option
             updateOptionsList();
         }
 
@@ -311,7 +333,15 @@
             optionsList.innerHTML = "";
             for (var i = 0; i < options.length; i++) {
                 var li = document.createElement("li");
-                li.textContent = options[i];
+                li.textContent = options[i].label;
+
+                var colorBox = document.createElement("span");
+                colorBox.style.display = "inline-block";
+                colorBox.style.width = "20px";
+                colorBox.style.height = "20px";
+                colorBox.style.backgroundColor = options[i].color;
+                colorBox.style.marginRight = "10px";
+                li.prepend(colorBox);
 
                 var editButton = document.createElement("button");
                 editButton.textContent = "Edit";
@@ -345,14 +375,31 @@
         }
 
         function editOption(index) {
-            var newOption = prompt("Edit option:", options[index]);
-            if (newOption !== null) {
-                newOption = newOption.trim();
-                if (newOption === "") {
-                    alert("Option cannot be empty.");
-                } else {
-                    options[index] = newOption;
-                    updateOptionsList();
+            var newLabel = prompt("Edit option label:", options[index].label);
+            if (newLabel !== null) {
+                newLabel = newLabel.trim();
+                if (newLabel === "") {
+                    alert("Label cannot be empty.");
+                    return;
+                }
+                var newOption = prompt("Edit option full text (leave blank to default to label):", options[index].fullText);
+                if (newOption !== null) {
+                    newOption = newOption.trim();
+                    if (newOption === "") {
+                        newOption = newLabel;
+                    }
+                    var newColor = prompt("Edit option color (in hex format, e.g., #ff0000):", options[index].color);
+                    if (newColor !== null) {
+                        if (/^#([0-9A-F]{3}){1,2}$/i.test(newColor)) {
+                            options[index].label = newLabel;
+                            options[index].fullText = newOption;
+                            options[index].color = newColor;
+                            updateOptionsList();
+                            drawRouletteWheel();
+                        } else {
+                            alert("Invalid color format. Please enter a valid hex color code.");
+                        }
+                    }
                 }
             }
         }
@@ -455,6 +502,85 @@
             var colors = ['#FFC107', '#28A745', '#DC3545', '#17A2B8', '#6F42C1', '#FD7E14'];
             return colors[Math.floor(Math.random() * colors.length)];
         }
+
+        // Tooltip functionality
+        var canvas = document.getElementById("wheelcanvas");
+        var tooltip = document.getElementById("tooltip");
+
+        canvas.addEventListener("mousemove", function(e) {
+            var rect = canvas.getBoundingClientRect();
+            var x = e.clientX - rect.left - 250;
+            var y = e.clientY - rect.top - 250;
+            var angle = Math.atan2(y, x);
+            if (angle < 0) angle += 2 * Math.PI;
+
+            let visibleOptions = options.filter((option, index) => !hiddenOptions.has(index));
+            if (visibleOptions.length === 0) return;
+
+            var arc = Math.PI / (visibleOptions.length / 2);
+            var index = Math.floor((angle / arc)) % visibleOptions.length;
+            var option = visibleOptions[index];
+
+            if (Math.sqrt(x * x + y * y) <= 200) {
+                tooltip.style.left = e.clientX + 10 + "px";
+                tooltip.style.top = e.clientY + 10 + "px";
+                tooltip.innerHTML = option.fullText;
+                tooltip.style.opacity = 1;
+            } else {
+                tooltip.style.opacity = 0;
+            }
+        });
+
+        canvas.addEventListener("mouseout", function() {
+            tooltip.style.opacity = 0;
+        });
+
+        // Random color generator for initial color input value
+        function getRandomColor() {
+            return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+        }
+        document.getElementById('colorInput').value = getRandomColor();
+
+        // CSV Upload Functionality
+        function uploadCSV() {
+            var fileInput = document.getElementById('csvFileInput');
+            var file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a CSV file to upload.");
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var contents = e.target.result;
+                parseCSV(contents);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(data) {
+            var lines = data.split('\n');
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                if (line === "") continue; // Skip empty lines
+                var values = line.split(',');
+                // Expected columns: label, fullText, color
+                var label = values[0] ? values[0].trim() : "";
+                var fullText = values[1] ? values[1].trim() : label;
+                var color = values[2] ? values[2].trim() : getRandomColor();
+                if (label === "") {
+                    alert("Error on line " + (i + 1) + ": Label is required.");
+                    continue;
+                }
+                // Validate color format
+                if (!/^#([0-9A-F]{3}){1,2}$/i.test(color)) {
+                    color = getRandomColor(); // Assign random color if invalid
+                }
+                options.push({ label: label, fullText: fullText, color: color });
+            }
+            updateOptionsList();
+            alert("Options have been successfully uploaded from the CSV file.");
+        }
+
     </script>
 </body>
 </html>
