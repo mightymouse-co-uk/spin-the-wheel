@@ -19,23 +19,33 @@
         #spin-button {
             position: absolute;
             top: 50%;
-            right: -100px;
-            transform: translateY(-50%);
-            padding: 20px 30px;
-            font-size: 20px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 10px;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: #28a745;
+            border-radius: 50%;
             cursor: pointer;
             transition: transform 0.2s;
         }
         #spin-button:hover {
             background-color: #218838;
-            transform: translateY(-50%) scale(1.05);
+            transform: translate(-50%, -50%) scale(1.05);
         }
         #spin-button:active {
             background-color: #1e7e34;
+        }
+        #spin-button:before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-bottom: 40px solid #28a745;
         }
         #result {
             font-size: 24px;
@@ -87,7 +97,7 @@
     <h1>Spin the Wheel</h1>
     <div id="wheel-container">
         <canvas id="wheelcanvas" width="500" height="500"></canvas>
-        <button id="spin-button" onclick="spinWheel()">Spin</button>
+        <div id="spin-button" onclick="spinWheel()"></div>
     </div>
     <div id="result"></div>
 
@@ -101,6 +111,8 @@
         </div>
     </details>
 
+    <audio id="tick-sound" src="tick.mp3"></audio>
+
     <script>
         let options = [];
         let startAngle = 0;
@@ -110,6 +122,8 @@
         let spinTime = 0;
         let spinTimeTotal = 0;
         let ctx;
+        let prevIndex = -1; // For detecting segment changes
+        const tickSound = document.getElementById('tick-sound');
 
         function byte2Hex(n) {
             var nybHexString = "0123456789ABCDEF";
@@ -188,6 +202,7 @@
             spinAngleStart = Math.random() * 10 + 10;
             spinTime = 0;
             spinTimeTotal = Math.random() * 3 + 4 * 1000;
+            prevIndex = -1; // Reset previous index
             rotateWheel();
         }
 
@@ -199,7 +214,22 @@
             }
             var spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
             startAngle += (spinAngle * Math.PI / 180);
+
             drawRouletteWheel();
+
+            // Play ticking sound
+            var degrees = startAngle * 180 / Math.PI + 90;
+            var arcd = arc * 180 / Math.PI;
+            var index = Math.floor((360 - degrees % 360) / arcd) % options.length;
+
+            if (index !== prevIndex) {
+                // Play sound
+                tickSound.pause();
+                tickSound.currentTime = 0;
+                tickSound.play();
+                prevIndex = index;
+            }
+
             spinTimeout = setTimeout(rotateWheel, 30);
         }
 
