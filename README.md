@@ -19,7 +19,7 @@ An interactive, customizable "Spin the Wheel" web application that allows users 
 
 ## Demo
 
-[Live Demo]([https://your-demo-url.com](https://mightymouse-co-uk.github.io/spin-the-wheel/))
+Live Demo: https://mightymouse-co-uk.github.io/spin-the-wheel/
 
 ## Getting Started
 
