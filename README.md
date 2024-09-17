@@ -2,7 +2,7 @@
 
 An interactive, customizable "Spin the Wheel" web application that allows users to create and manage their own wheels with various options. Ideal for games, raffles, decision-making, and more.
 
-![Spin the Wheel Screenshot](screenshot.png)
+![Spin the Wheel Screenshot](screenshot.jpg)
 
 ## Features
 
@@ -32,7 +32,7 @@ An interactive, customizable "Spin the Wheel" web application that allows users 
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/yourusername/spin-the-wheel.git
+   git clone https://github.com/mightymouse-co-uk/spin-the-wheel.git
    ```
 
 2. **Navigate to the Project Directory**
