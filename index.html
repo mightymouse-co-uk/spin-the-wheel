@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spin the Wheel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #wheelcanvas {
+            border: 2px solid #000;
+            border-radius: 50%;
+            margin-top: 20px;
+        }
+        #options {
+            width: 80%;
+            height: 100px;
+        }
+        #result {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spin the Wheel</h1>
+    <textarea id="options" placeholder="Enter options separated by commas"></textarea><br>
+    <button onclick="createWheel()">Create Wheel</button>
+    <button onclick="spinWheel()">Spin</button>
+    <canvas id="wheelcanvas" width="500" height="500"></canvas>
+    <div id="result"></div>
+
+    <script>
+        let options = [];
+        let startAngle = 0;
+        let arc = 0;
+        let spinTimeout = null;
+        let spinAngleStart = 0;
+        let spinTime = 0;
+        let spinTimeTotal = 0;
+        let ctx;
+
+        function byte2Hex(n) {
+            var nybHexString = "0123456789ABCDEF";
+            return String(nybHexString.substr((n >> 4) & 0x0F,1)) + nybHexString.substr(n & 0x0F,1);
+        }
+
+        function RGB2Color(r,g,b) {
+            return '#' + byte2Hex(r) + byte2Hex(g) + byte2Hex(b);
+        }
+
+        function getColor(item, maxitem) {
+            var phase = 0;
+            var center = 128;
+            var width = 127;
+            var frequency = Math.PI*2/maxitem;
+
+            let red   = Math.sin(frequency*item+2+phase) * width + center;
+            let green = Math.sin(frequency*item+0+phase) * width + center;
+            let blue  = Math.sin(frequency*item+4+phase) * width + center;
+
+            return RGB2Color(red,green,blue);
+        }
+
+        function drawRouletteWheel() {
+            var canvas = document.getElementById("wheelcanvas");
+            if (canvas.getContext) {
+                var outsideRadius = 200;
+                var textRadius = 160;
+                var insideRadius = 0;
+
+                ctx = canvas.getContext("2d");
+                ctx.clearRect(0,0,500,500);
+
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 2;
+
+                ctx.font = 'bold 14px Helvetica, Arial';
+
+                for(var i = 0; i < options.length; i++) {
+                    var angle = startAngle + i * arc;
+                    // Draw segment
+                    ctx.fillStyle = getColor(i, options.length);
+
+                    ctx.beginPath();
+                    ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
+                    ctx.arc(250, 250, insideRadius, angle + arc, angle, true);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Draw text
+                    ctx.save();
+                    ctx.fillStyle = "black";
+                    ctx.translate(250 + Math.cos(angle + arc / 2) * textRadius,
+                                  250 + Math.sin(angle + arc / 2) * textRadius);
+                    ctx.rotate(angle + arc / 2 + Math.PI / 2);
+                    var text = options[i];
+                    ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+                    ctx.restore();
+                }
+
+                // Draw arrow
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.moveTo(250 - 10, 250 - (outsideRadius + 20));
+                ctx.lineTo(250 + 10, 250 - (outsideRadius + 20));
+                ctx.lineTo(250 + 0, 250 - (outsideRadius - 5));
+                ctx.fill();
+            }
+        }
+
+        function spinWheel() {
+            spinAngleStart = Math.random() * 10 + 10;
+            spinTime = 0;
+            spinTimeTotal = Math.random() * 3 + 4 * 1000;
+            rotateWheel();
+        }
+
+        function rotateWheel() {
+            spinTime += 30;
+            if(spinTime >= spinTimeTotal) {
+                stopRotateWheel();
+                return;
+            }
+            var spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+            startAngle += (spinAngle * Math.PI / 180);
+            drawRouletteWheel();
+            spinTimeout = setTimeout(rotateWheel, 30);
+        }
+
+        function stopRotateWheel() {
+            clearTimeout(spinTimeout);
+            var degrees = startAngle * 180 / Math.PI + 90;
+            var arcd = arc * 180 / Math.PI;
+            var index = Math.floor((360 - degrees % 360) / arcd) % options.length;
+            ctx.save();
+            ctx.font = 'bold 30px Helvetica, Arial';
+            var text = options[index];
+            document.getElementById("result").innerHTML = "Result: " + text;
+            ctx.restore();
+        }
+
+        function easeOut(t, b, c, d) {
+            var ts = (t/=d)*t;
+            var tc = ts*t;
+            return b+c*(tc + -3*ts + 3*t);
+        }
+
+        function createWheel() {
+            var optionsText = document.getElementById("options").value;
+            options = optionsText.split(",");
+            options = options.map(function(option) { return option.trim(); }).filter(function(option) { return option; });
+            if (options.length === 0) {
+                alert("Please enter at least one option.");
+                return;
+            }
+            arc = Math.PI / (options.length / 2);
+            drawRouletteWheel();
+            document.getElementById("result").innerHTML = "";
+        }
+    </script>
+</body>
+</html>
