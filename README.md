@@ -2,7 +2,7 @@
 
 An interactive, customizable "Spin the Wheel" web application that allows users to create and manage their own wheels with various options. Ideal for games, raffles, decision-making, and more.
 
-![Spin the Wheel Screenshot](screenshot.jpg)
+![Spin the Wheel Screenshot](screenshot.jpeg)
 
 ## Features
 
