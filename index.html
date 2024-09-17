@@ -7,10 +7,56 @@
             font-family: Arial, sans-serif;
             text-align: center;
         }
+        #wheel-container {
+            display: inline-block;
+            position: relative;
+            margin-top: 20px;
+        }
         #wheelcanvas {
             border: 2px solid #000;
             border-radius: 50%;
+        }
+        #spin-button {
+            position: absolute;
+            top: 50%;
+            right: -100px;
+            transform: translateY(-50%);
+            padding: 20px 30px;
+            font-size: 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        #spin-button:hover {
+            background-color: #218838;
+            transform: translateY(-50%) scale(1.05);
+        }
+        #spin-button:active {
+            background-color: #1e7e34;
+        }
+        #result {
+            font-size: 24px;
+            font-weight: bold;
             margin-top: 20px;
+        }
+        details {
+            margin-top: 30px;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        details summary {
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
         }
         #optionInput {
             width: 300px;
@@ -30,12 +76,7 @@
         #optionsList button {
             margin-left: 10px;
         }
-        #result {
-            font-size: 24px;
-            font-weight: bold;
-            margin-top: 20px;
-        }
-        button {
+        #add-option-button, #create-wheel-button {
             padding: 10px 20px;
             font-size: 16px;
             margin: 10px;
@@ -44,13 +85,21 @@
 </head>
 <body>
     <h1>Spin the Wheel</h1>
-    <input type="text" id="optionInput" placeholder="Enter an option">
-    <button onclick="addOption()">Add Option</button>
-    <ul id="optionsList"></ul>
-    <button onclick="createWheel()">Create Wheel</button>
-    <button onclick="spinWheel()">Spin</button>
-    <canvas id="wheelcanvas" width="500" height="500"></canvas>
+    <div id="wheel-container">
+        <canvas id="wheelcanvas" width="500" height="500"></canvas>
+        <button id="spin-button" onclick="spinWheel()">Spin</button>
+    </div>
     <div id="result"></div>
+
+    <details>
+        <summary>Manage Options</summary>
+        <div style="margin-top: 20px;">
+            <input type="text" id="optionInput" placeholder="Enter an option">
+            <button id="add-option-button" onclick="addOption()">Add Option</button>
+            <ul id="optionsList"></ul>
+            <button id="create-wheel-button" onclick="createWheel()">Create Wheel</button>
+        </div>
+    </details>
 
     <script>
         let options = [];
@@ -237,6 +286,7 @@
                 return;
             }
             arc = Math.PI / (options.length / 2);
+            startAngle = 0; // Reset the start angle to ensure fair spins each time
             drawRouletteWheel();
             document.getElementById("result").innerHTML = "";
         }
