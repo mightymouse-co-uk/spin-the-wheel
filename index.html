@@ -12,9 +12,23 @@
             border-radius: 50%;
             margin-top: 20px;
         }
-        #options {
-            width: 80%;
-            height: 100px;
+        #optionInput {
+            width: 300px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #optionsList {
+            list-style-type: none;
+            padding: 0;
+            max-width: 400px;
+            margin: 0 auto;
+            text-align: left;
+        }
+        #optionsList li {
+            margin: 5px 0;
+        }
+        #optionsList button {
+            margin-left: 10px;
         }
         #result {
             font-size: 24px;
@@ -30,7 +44,9 @@
 </head>
 <body>
     <h1>Spin the Wheel</h1>
-    <textarea id="options" placeholder="Enter options separated by commas"></textarea><br>
+    <input type="text" id="optionInput" placeholder="Enter an option">
+    <button onclick="addOption()">Add Option</button>
+    <ul id="optionsList"></ul>
     <button onclick="createWheel()">Create Wheel</button>
     <button onclick="spinWheel()">Spin</button>
     <canvas id="wheelcanvas" width="500" height="500"></canvas>
@@ -116,6 +132,10 @@
         }
 
         function spinWheel() {
+            if (options.length === 0) {
+                alert("Please add at least one option before spinning.");
+                return;
+            }
             spinAngleStart = Math.random() * 10 + 10;
             spinTime = 0;
             spinTimeTotal = Math.random() * 3 + 4 * 1000;
@@ -152,12 +172,68 @@
             return b+c*(tc + -3*ts + 3*t);
         }
 
+        function addOption() {
+            var optionInput = document.getElementById("optionInput");
+            var optionText = optionInput.value.trim();
+            if (optionText === "") {
+                alert("Please enter a valid option.");
+                return;
+            }
+            options.push(optionText);
+            optionInput.value = "";
+            updateOptionsList();
+        }
+
+        function updateOptionsList() {
+            var optionsList = document.getElementById("optionsList");
+            optionsList.innerHTML = "";
+            for (var i = 0; i < options.length; i++) {
+                var li = document.createElement("li");
+                li.textContent = options[i];
+
+                var editButton = document.createElement("button");
+                editButton.textContent = "Edit";
+                editButton.onclick = (function(index) {
+                    return function() {
+                        editOption(index);
+                    }
+                })(i);
+
+                var removeButton = document.createElement("button");
+                removeButton.textContent = "Remove";
+                removeButton.onclick = (function(index) {
+                    return function() {
+                        removeOption(index);
+                    }
+                })(i);
+
+                li.appendChild(editButton);
+                li.appendChild(removeButton);
+                optionsList.appendChild(li);
+            }
+        }
+
+        function editOption(index) {
+            var newOption = prompt("Edit option:", options[index]);
+            if (newOption !== null) {
+                newOption = newOption.trim();
+                if (newOption === "") {
+                    alert("Option cannot be empty.");
+                } else {
+                    options[index] = newOption;
+                    updateOptionsList();
+                }
+            }
+        }
+
+        function removeOption(index) {
+            options.splice(index, 1);
+            updateOptionsList();
+        }
+
         function createWheel() {
-            var optionsText = document.getElementById("options").value;
-            options = optionsText.split(",");
-            options = options.map(function(option) { return option.trim(); }).filter(function(option) { return option; });
             if (options.length === 0) {
-                alert("Please enter at least one option.");
+                alert("Please add at least one option before creating the wheel.");
                 return;
             }
             arc = Math.PI / (options.length / 2);
