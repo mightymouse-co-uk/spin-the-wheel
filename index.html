@@ -3,6 +3,7 @@
 <head>
     <title>Spin the Wheel</title>
     <style>
+        /* ... [All your existing CSS styles remain unchanged] ... */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
@@ -138,273 +139,275 @@
     </div>
 
     <script>
-        let options = [];
-        let startAngle = 0;
-        let arc = 0;
-        let spinTimeout = null;
-        let spinAngleStart = 0;
-        let spinTime = 0;
-        let spinTimeTotal = 0;
-        let ctx;
-        let prevIndex = -1; // For detecting segment changes
-        const tickSound = document.getElementById('tick-sound');
+        document.addEventListener('DOMContentLoaded', function() {
+            let options = [];
+            let startAngle = 0;
+            let arc = 0;
+            let spinTimeout = null;
+            let spinAngleStart = 0;
+            let spinTime = 0;
+            let spinTimeTotal = 0;
+            let ctx;
+            let prevIndex = -1; // For detecting segment changes
+            const tickSound = document.getElementById('tick-sound');
 
-        function byte2Hex(n) {
-            var nybHexString = "0123456789ABCDEF";
-            return String(nybHexString.substr((n >> 4) & 0x0F,1)) + nybHexString.substr(n & 0x0F,1);
-        }
+            function byte2Hex(n) {
+                var nybHexString = "0123456789ABCDEF";
+                return String(nybHexString.substr((n >> 4) & 0x0F,1)) + nybHexString.substr(n & 0x0F,1);
+            }
 
-        function RGB2Color(r,g,b) {
-            return '#' + byte2Hex(r) + byte2Hex(g) + byte2Hex(b);
-        }
+            function RGB2Color(r,g,b) {
+                return '#' + byte2Hex(r) + byte2Hex(g) + byte2Hex(b);
+            }
 
-        function getColor(item, maxitem) {
-            var phase = 0;
-            var center = 128;
-            var width = 127;
-            var frequency = Math.PI*2/maxitem;
+            function getColor(item, maxitem) {
+                var phase = 0;
+                var center = 128;
+                var width = 127;
+                var frequency = Math.PI*2/maxitem;
 
-            let red   = Math.sin(frequency*item+2+phase) * width + center;
-            let green = Math.sin(frequency*item+0+phase) * width + center;
-            let blue  = Math.sin(frequency*item+4+phase) * width + center;
+                let red   = Math.sin(frequency*item+2+phase) * width + center;
+                let green = Math.sin(frequency*item+0+phase) * width + center;
+                let blue  = Math.sin(frequency*item+4+phase) * width + center;
 
-            return RGB2Color(red,green,blue);
-        }
+                return RGB2Color(red,green,blue);
+            }
 
-        function drawRouletteWheel() {
-            var canvas = document.getElementById("wheelcanvas");
-            if (canvas.getContext) {
-                var outsideRadius = 200;
-                var textRadius = 160;
-                var insideRadius = 0;
+            function drawRouletteWheel() {
+                var canvas = document.getElementById("wheelcanvas");
+                if (canvas.getContext) {
+                    var outsideRadius = 200;
+                    var textRadius = 160;
+                    var insideRadius = 0;
 
-                ctx = canvas.getContext("2d");
-                ctx.clearRect(0,0,500,500);
+                    ctx = canvas.getContext("2d");
+                    ctx.clearRect(0,0,500,500);
 
-                ctx.strokeStyle = "black";
-                ctx.lineWidth = 2;
+                    ctx.strokeStyle = "black";
+                    ctx.lineWidth = 2;
 
-                ctx.font = 'bold 14px Helvetica, Arial';
+                    ctx.font = 'bold 14px Helvetica, Arial';
 
-                for(var i = 0; i < options.length; i++) {
-                    var angle = startAngle + i * arc;
-                    // Draw segment
-                    ctx.fillStyle = getColor(i, options.length);
+                    for(var i = 0; i < options.length; i++) {
+                        var angle = startAngle + i * arc;
+                        // Draw segment
+                        ctx.fillStyle = getColor(i, options.length);
 
+                        ctx.beginPath();
+                        ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
+                        ctx.arc(250, 250, insideRadius, angle + arc, angle, true);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Draw text
+                        ctx.save();
+                        ctx.fillStyle = "black";
+                        ctx.translate(250 + Math.cos(angle + arc / 2) * textRadius,
+                                      250 + Math.sin(angle + arc / 2) * textRadius);
+                        ctx.rotate(angle + arc / 2 + Math.PI / 2);
+                        var text = options[i];
+                        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+                        ctx.restore();
+                    }
+
+                    // Draw arrow
+                    ctx.fillStyle = "red";
                     ctx.beginPath();
-                    ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
-                    ctx.arc(250, 250, insideRadius, angle + arc, angle, true);
+                    ctx.moveTo(250 - 10, 250 - (outsideRadius + 20));
+                    ctx.lineTo(250 + 10, 250 - (outsideRadius + 20));
+                    ctx.lineTo(250 + 0, 250 - (outsideRadius - 5));
                     ctx.fill();
-                    ctx.stroke();
-
-                    // Draw text
-                    ctx.save();
-                    ctx.fillStyle = "black";
-                    ctx.translate(250 + Math.cos(angle + arc / 2) * textRadius,
-                                  250 + Math.sin(angle + arc / 2) * textRadius);
-                    ctx.rotate(angle + arc / 2 + Math.PI / 2);
-                    var text = options[i];
-                    ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
-                    ctx.restore();
-                }
-
-                // Draw arrow
-                ctx.fillStyle = "red";
-                ctx.beginPath();
-                ctx.moveTo(250 - 10, 250 - (outsideRadius + 20));
-                ctx.lineTo(250 + 10, 250 - (outsideRadius + 20));
-                ctx.lineTo(250 + 0, 250 - (outsideRadius - 5));
-                ctx.fill();
-            }
-        }
-
-        function spinWheel() {
-            if (options.length === 0) {
-                alert("Please add at least one option before spinning.");
-                return;
-            }
-            spinAngleStart = Math.random() * 10 + 10;
-            spinTime = 0;
-            spinTimeTotal = Math.random() * 3 + 4 * 1000;
-            prevIndex = -1; // Reset previous index
-            document.getElementById("result").innerHTML = ""; // Clear the result
-            rotateWheel();
-        }
-
-        function rotateWheel() {
-            spinTime += 30;
-            if(spinTime >= spinTimeTotal) {
-                stopRotateWheel();
-                return;
-            }
-            var spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
-            startAngle += (spinAngle * Math.PI / 180);
-
-            drawRouletteWheel();
-
-            // Play ticking sound
-            var degrees = startAngle * 180 / Math.PI + 90;
-            var arcd = arc * 180 / Math.PI;
-            var index = Math.floor((360 - degrees % 360) / arcd) % options.length;
-
-            if (index !== prevIndex) {
-                // Play sound
-                tickSound.pause();
-                tickSound.currentTime = 0;
-                tickSound.play().catch(function(error) {
-                    // Auto-play was prevented
-                    console.log('Auto-play prevented:', error);
-                });
-                prevIndex = index;
-            }
-
-            spinTimeout = setTimeout(rotateWheel, 30);
-        }
-
-        function stopRotateWheel() {
-            clearTimeout(spinTimeout);
-            var degrees = startAngle * 180 / Math.PI + 90;
-            var arcd = arc * 180 / Math.PI;
-            var index = Math.floor((360 - degrees % 360) / arcd) % options.length;
-            ctx.save();
-            ctx.font = 'bold 30px Helvetica, Arial';
-            var text = options[index];
-            // Show result in popup with confetti
-            showResult(text);
-            ctx.restore();
-        }
-
-        function easeOut(t, b, c, d) {
-            var ts = (t/=d)*t;
-            var tc = ts*t;
-            return b+c*(tc + -3*ts + 3*t);
-        }
-
-        function addOption() {
-            var optionInput = document.getElementById("optionInput");
-            var optionText = optionInput.value.trim();
-            if (optionText === "") {
-                alert("Please enter a valid option.");
-                return;
-            }
-            options.push(optionText);
-            optionInput.value = "";
-            updateOptionsList();
-        }
-
-        function updateOptionsList() {
-            var optionsList = document.getElementById("optionsList");
-            optionsList.innerHTML = "";
-            for (var i = 0; i < options.length; i++) {
-                var li = document.createElement("li");
-                li.textContent = options[i];
-
-                var editButton = document.createElement("button");
-                editButton.textContent = "Edit";
-                editButton.onclick = (function(index) {
-                    return function() {
-                        editOption(index);
-                    }
-                })(i);
-
-                var removeButton = document.createElement("button");
-                removeButton.textContent = "Remove";
-                removeButton.onclick = (function(index) {
-                    return function() {
-                        removeOption(index);
-                    }
-                })(i);
-
-                li.appendChild(editButton);
-                li.appendChild(removeButton);
-                optionsList.appendChild(li);
-            }
-        }
-
-        function editOption(index) {
-            var newOption = prompt("Edit option:", options[index]);
-            if (newOption !== null) {
-                newOption = newOption.trim();
-                if (newOption === "") {
-                    alert("Option cannot be empty.");
-                } else {
-                    options[index] = newOption;
-                    updateOptionsList();
                 }
             }
-        }
 
-        function removeOption(index) {
-            options.splice(index, 1);
-            updateOptionsList();
-        }
-
-        function createWheel() {
-            if (options.length === 0) {
-                alert("Please add at least one option before creating the wheel.");
-                return;
+            function spinWheel() {
+                if (options.length === 0) {
+                    alert("Please add at least one option before spinning.");
+                    return;
+                }
+                spinAngleStart = Math.random() * 10 + 10;
+                spinTime = 0;
+                spinTimeTotal = (Math.random() * 3 + 4) * 1000; // Fixed operator precedence
+                prevIndex = -1; // Reset previous index
+                document.getElementById("result").innerHTML = ""; // Clear the result
+                rotateWheel();
             }
-            arc = Math.PI / (options.length / 2);
-            startAngle = 0; // Reset the start angle to ensure fair spins each time
-            drawRouletteWheel();
-            document.getElementById("result").innerHTML = "";
-        }
 
-        function updateTitle() {
-            var titleInput = document.getElementById("titleInput");
-            var newTitle = titleInput.value.trim();
-            if (newTitle === "") {
-                alert("Title cannot be empty.");
-                return;
+            function rotateWheel() {
+                spinTime += 30;
+                if(spinTime >= spinTimeTotal) {
+                    stopRotateWheel();
+                    return;
+                }
+                var spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+                startAngle += (spinAngle * Math.PI / 180);
+
+                drawRouletteWheel();
+
+                // Play ticking sound
+                var degrees = startAngle * 180 / Math.PI + 90;
+                var arcd = arc * 180 / Math.PI;
+                var index = Math.floor((360 - degrees % 360) / arcd) % options.length;
+
+                if (index !== prevIndex) {
+                    // Play sound
+                    tickSound.pause();
+                    tickSound.currentTime = 0;
+                    tickSound.play().catch(function(error) {
+                        // Auto-play was prevented
+                        console.log('Auto-play prevented:', error);
+                    });
+                    prevIndex = index;
+                }
+
+                spinTimeout = setTimeout(rotateWheel, 30);
             }
-            document.getElementById("wheel-title").textContent = newTitle;
-        }
 
-        function showResult(text) {
-            var resultPopup = document.getElementById("result-popup");
-            var resultText = document.getElementById("result-text");
-            resultText.textContent = "Result: " + text;
-            resultPopup.style.display = "flex";
-            startConfetti();
-        }
-
-        function closeResult() {
-            var resultPopup = document.getElementById("result-popup");
-            resultPopup.style.display = "none";
-            stopConfetti();
-        }
-
-        // Confetti functions
-        let confettiInterval;
-        function startConfetti() {
-            confettiInterval = setInterval(createConfetti, 100);
-        }
-
-        function stopConfetti() {
-            clearInterval(confettiInterval);
-            var confettis = document.getElementsByClassName("confetti");
-            while (confettis.length > 0) {
-                confettis[0].parentNode.removeChild(confettis[0]);
+            function stopRotateWheel() {
+                clearTimeout(spinTimeout);
+                var degrees = startAngle * 180 / Math.PI + 90;
+                var arcd = arc * 180 / Math.PI;
+                var index = Math.floor((360 - degrees % 360) / arcd) % options.length;
+                ctx.save();
+                ctx.font = 'bold 30px Helvetica, Arial';
+                var text = options[index];
+                // Show result in popup with confetti
+                showResult(text);
+                ctx.restore();
             }
-        }
 
-        function createConfetti() {
-            var confetti = document.createElement("div");
-            confetti.classList.add("confetti");
-            confetti.style.left = Math.random() * 100 + "vw";
-            confetti.style.backgroundColor = randomColor();
-            confetti.style.animationDuration = Math.random() * 3 + 2 + "s";
-            confetti.style.opacity = Math.random();
-            document.body.appendChild(confetti);
-            setTimeout(function() {
-                confetti.remove();
-            }, 5000);
-        }
+            function easeOut(t, b, c, d) {
+                var ts = (t/=d)*t;
+                var tc = ts*t;
+                return b+c*(tc + -3*ts + 3*t);
+            }
 
-        function randomColor() {
-            var colors = ['#FFC107', '#28A745', '#DC3545', '#17A2B8', '#6F42C1', '#FD7E14'];
-            return colors[Math.floor(Math.random() * colors.length)];
-        }
+            function addOption() {
+                var optionInput = document.getElementById("optionInput");
+                var optionText = optionInput.value.trim();
+                if (optionText === "") {
+                    alert("Please enter a valid option.");
+                    return;
+                }
+                options.push(optionText);
+                optionInput.value = "";
+                updateOptionsList();
+            }
+
+            function updateOptionsList() {
+                var optionsList = document.getElementById("optionsList");
+                optionsList.innerHTML = "";
+                for (var i = 0; i < options.length; i++) {
+                    var li = document.createElement("li");
+                    li.textContent = options[i];
+
+                    var editButton = document.createElement("button");
+                    editButton.textContent = "Edit";
+                    editButton.onclick = (function(index) {
+                        return function() {
+                            editOption(index);
+                        }
+                    })(i);
+
+                    var removeButton = document.createElement("button");
+                    removeButton.textContent = "Remove";
+                    removeButton.onclick = (function(index) {
+                        return function() {
+                            removeOption(index);
+                        }
+                    })(i);
+
+                    li.appendChild(editButton);
+                    li.appendChild(removeButton);
+                    optionsList.appendChild(li);
+                }
+            }
+
+            function editOption(index) {
+                var newOption = prompt("Edit option:", options[index]);
+                if (newOption !== null) {
+                    newOption = newOption.trim();
+                    if (newOption === "") {
+                        alert("Option cannot be empty.");
+                    } else {
+                        options[index] = newOption;
+                        updateOptionsList();
+                    }
+                }
+            }
+
+            function removeOption(index) {
+                options.splice(index, 1);
+                updateOptionsList();
+            }
+
+            function createWheel() {
+                if (options.length === 0) {
+                    alert("Please add at least one option before creating the wheel.");
+                    return;
+                }
+                arc = Math.PI / (options.length / 2);
+                startAngle = 0; // Reset the start angle to ensure fair spins each time
+                drawRouletteWheel();
+                document.getElementById("result").innerHTML = "";
+            }
+
+            function updateTitle() {
+                var titleInput = document.getElementById("titleInput");
+                var newTitle = titleInput.value.trim();
+                if (newTitle === "") {
+                    alert("Title cannot be empty.");
+                    return;
+                }
+                document.getElementById("wheel-title").textContent = newTitle;
+            }
+
+            function showResult(text) {
+                var resultPopup = document.getElementById("result-popup");
+                var resultText = document.getElementById("result-text");
+                resultText.textContent = "Result: " + text;
+                resultPopup.style.display = "flex";
+                startConfetti();
+            }
+
+            function closeResult() {
+                var resultPopup = document.getElementById("result-popup");
+                resultPopup.style.display = "none";
+                stopConfetti();
+            }
+
+            // Confetti functions
+            let confettiInterval;
+            function startConfetti() {
+                confettiInterval = setInterval(createConfetti, 100);
+            }
+
+            function stopConfetti() {
+                clearInterval(confettiInterval);
+                var confettis = document.getElementsByClassName("confetti");
+                while (confettis.length > 0) {
+                    confettis[0].parentNode.removeChild(confettis[0]);
+                }
+            }
+
+            function createConfetti() {
+                var confetti = document.createElement("div");
+                confetti.classList.add("confetti");
+                confetti.style.left = Math.random() * 100 + "vw";
+                confetti.style.backgroundColor = randomColor();
+                confetti.style.animationDuration = Math.random() * 3 + 2 + "s";
+                confetti.style.opacity = Math.random();
+                document.body.appendChild(confetti);
+                setTimeout(function() {
+                    confetti.remove();
+                }, 5000);
+            }
+
+            function randomColor() {
+                var colors = ['#FFC107', '#28A745', '#DC3545', '#17A2B8', '#6F42C1', '#FD7E14'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+        });
     </script>
 </body>
 </html>
