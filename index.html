@@ -206,6 +206,8 @@
         let hiddenOptions = new Set(); // To keep track of hidden options
         let lastResultIndex = -1; // To keep track of the last result index
         const tickSound = document.getElementById('tick-sound');
+        let confettiInterval = null;
+        let isConfettiRunning = false; // Add this flag
 
         function drawRouletteWheel() {
             var canvas = document.getElementById("wheelcanvas");
@@ -270,18 +272,44 @@
             }
         }
 
+
+        // Define constants for default spin time and maximum spin angle start
+        const DEFAULT_SPIN_TIME_TOTAL = 5000; // Default spin duration in milliseconds (e.g., 5000ms = 5 seconds)
+        const MAX_SPIN_ANGLE_START = 30;      // Maximum spin angle start in degrees
+
+        // Function to get a new random spin angle start (optional)
+        function getNewSpinAngleStart() {
+            return Math.random() * 10 + 10; // Random between 10 and 20 degrees
+        }
+
         function spinWheel() {
             let visibleOptions = options.filter((option, index) => !hiddenOptions.has(index));
             if (visibleOptions.length === 0) {
                 alert("Please ensure at least one option is visible before spinning.");
                 return;
             }
-            spinAngleStart = Math.random() * 10 + 10;
-            spinTime = 0;
-            spinTimeTotal = (Math.random() * 3 + 4) * 1000; // Fixed operator precedence
-            prevIndex = -1; // Reset previous index
-            rotateWheel();
+
+            if (spinTimeout !== null) {
+                // Wheel is already spinning
+                // Reset spin time and set spin angle start to speed up the wheel
+                spinTime = 0;
+                spinTimeTotal = DEFAULT_SPIN_TIME_TOTAL; // Reset to default spin duration
+
+                // Increase spin angle start but cap it at MAX_SPIN_ANGLE_START
+                spinAngleStart += 5; // Increase by 5 degrees for each click
+                if (spinAngleStart > MAX_SPIN_ANGLE_START) {
+                    spinAngleStart = MAX_SPIN_ANGLE_START; // Cap at maximum value
+                }
+            } else {
+                // Start a new spin
+                spinAngleStart = getNewSpinAngleStart(); // Random initial spin speed
+                spinTime = 0;
+                spinTimeTotal = DEFAULT_SPIN_TIME_TOTAL; // Set to default spin duration
+                prevIndex = -1; // Reset previous index
+                rotateWheel();
+            }
         }
+
 
         function rotateWheel() {
             spinTime += 30;
@@ -316,6 +344,7 @@
 
         function stopRotateWheel() {
             clearTimeout(spinTimeout);
+            spinTimeout = null; // Reset spinTimeout
             var degrees = startAngle * 180 / Math.PI + 90;
             var arcd = arc * 180 / Math.PI;
             let visibleOptions = options.filter((option, index) => !hiddenOptions.has(index));
@@ -514,13 +543,16 @@
         }
 
         // Confetti functions
-        let confettiInterval;
         function startConfetti() {
+            if (isConfettiRunning) return; // Prevent multiple intervals
+            isConfettiRunning = true;
             confettiInterval = setInterval(createConfetti, 100);
         }
 
         function stopConfetti() {
             clearInterval(confettiInterval);
+            confettiInterval = null;
+            isConfettiRunning = false;
             var confettis = document.getElementsByClassName("confetti");
             while (confettis.length > 0) {
                 confettis[0].parentNode.removeChild(confettis[0]);
